@@ -24,10 +24,6 @@ struct JobListView: View {
                     Text(job.location.replacingOccurrences(of: "\"", with: ""))
                         .font(.subheadline)
                         .foregroundColor(.blue)
-                    
-                    Text(job.jobDescription)
-                        .font(.body)
-                        .lineLimit(2)
                 }
                 .padding(.vertical, 8)
             }
