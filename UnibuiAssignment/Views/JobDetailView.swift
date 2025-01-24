@@ -13,7 +13,7 @@ struct JobDetailView: View {
     @Environment(\.dismiss) var dismiss
     let job: Job
     @State private var selectedScene: MKLookAroundScene?
-    
+    @State private var locationError = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -46,19 +46,31 @@ struct JobDetailView: View {
                 .frame(maxWidth: .infinity)
                 
                 VStack(alignment: .leading, spacing: 15) {
-                    JobDetailRowView(icon: "building.2", title: "Company Name", content: job.companyName)
-                    JobDetailRowView(icon: "briefcase", title: "Job Description", content: job.jobDescription)
-                    JobDetailRowView(icon: "list.clipboard", title: "Job Requirement", content: job.requirements)
-                    JobDetailRowView(icon: "mappin.and.ellipse", title: "Location", content: job.location)
-                    LookAroundPreview(scene: $selectedScene)
-                        .frame(height: 200)
-                        .cornerRadius(12)
-                        .task {
-                            await searchLocation()
-                        }
+                    JobDetailRowView(icon: "building.2.fill", title: "Company Name", content: job.companyName)
+                    JobDetailRowView(icon: "briefcase.fill", title: "Job Description", content: job.jobDescription)
+                    JobDetailRowView(icon: "list.clipboard.fill", title: "Job Requirement", content: job.requirements)
+                    JobDetailRowView(icon: "mappin.and.ellipse.fill", title: "Location", content: job.location)
+
+                    if locationError {
+                        ContentUnavailableView("No location preview available :(", systemImage: "eye.slash.fill")
+                           .frame(height: 200)
+                           .overlay(
+                               RoundedRectangle(cornerRadius: 12)
+                                   .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                           )
+                    }
+                    else{
+                        LookAroundPreview(scene: $selectedScene)
+                            .frame(height: 200)
+                            .cornerRadius(12)
+                            .task {
+                                await searchLocation()
+                            }
+                    }
+                    
                 }
                 .padding(.horizontal, 24)
-//                .padding(.bottom, 1)
+                
                 Button(action: {}) {
                     Text("I need this job!")
                         .font(.title3.bold())
@@ -73,12 +85,17 @@ struct JobDetailView: View {
             }
         }
         .navigationBarHidden(true)
+        .alert("Error", isPresented: $viewModel.showError) {
+            Button("OK") { }
+        } message: {
+            Text(viewModel.error?.message ?? "An unknown error occurred")
+        }
     }
     
     func searchLocation() async {
         let searchRequest = MKLocalSearch.Request()
         searchRequest.naturalLanguageQuery = job.location
-        searchRequest.resultTypes = .address 
+        searchRequest.resultTypes = .address
         
         let search = MKLocalSearch(request: searchRequest)
         
@@ -87,9 +104,14 @@ struct JobDetailView: View {
             if let mapItem = response.mapItems.first {
                 let lookAroundRequest = MKLookAroundSceneRequest(mapItem: mapItem)
                 selectedScene = try? await lookAroundRequest.scene
+                if selectedScene == nil {
+                    locationError = true
+                }
+            } else {
+                locationError = true
             }
         } catch {
-            print("Search error: \(error.localizedDescription)")
+            locationError = true
         }
     }
 }
@@ -97,8 +119,8 @@ struct JobDetailView: View {
 #Preview {
     JobDetailView(job: Job(
         jobTitle: "Network Administrator",
-        companyName: "Unibui",
-        location: "Ontario Street 123, Mississauga, Ontario",
+        companyName: "Some Company",
+        location: "Mississauga, Ontario",
         jobDescription: "Blah Blah Blah",
         requirements: "Blah Blah Blah"
     ))

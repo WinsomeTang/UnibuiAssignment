@@ -9,6 +9,8 @@ import Foundation
 
 class JobListViewModel: ObservableObject {
     @Published var listOfJobs: [Job] = []
+    @Published var error: JobError?
+    @Published var showError = false
     @Published var searchText: String = "" {
         didSet {
             filterJobs()
@@ -19,7 +21,6 @@ class JobListViewModel: ObservableObject {
             sortJobsByFavorites()
         }
     }
-    
     private var allJobs: [Job] = []
     
     private func filterJobs() {
@@ -33,51 +34,70 @@ class JobListViewModel: ObservableObject {
         }
     }
 
-    func loadJobs() -> [Job] {
+    func loadJobs() {
         guard let filePath = Bundle.main.path(forResource: "jobs", ofType: "csv") else {
-            print("Error - file not found")
-            return []
+            error = .fileNotFound
+            showError = true
+            return
         }
-        var jobs: [Job] = []
         
         do {
             let jobData = try String(contentsOfFile: filePath, encoding: .utf8)
             let rows = jobData.split(separator: "\n")
+            var jobs: [Job] = []
             
             for row in rows.dropFirst() where !row.isEmpty {
-                var columns: [String] = []
-                var currentField = ""
-                var insideQuotes = false
-                
-                for character in row {
-                    if character == "\"" {
-                        insideQuotes.toggle()
-                    } else if character == "," && !insideQuotes {
-                        columns.append(currentField.trimmingCharacters(in: .init(charactersIn: "\"")))
-                        currentField = ""
-                    } else {
-                        currentField.append(character)
-                    }
+                do {
+                    let job = try parseJob(from: row)
+                    jobs.append(job)
+                } catch {
+                    print("Error parsing row: \(error)")
+                    continue
                 }
-                columns.append(currentField.trimmingCharacters(in: .init(charactersIn: "\"")))
-                
-                guard columns.count >= 5 else { continue }
-                
-                let job = Job(
-                    jobTitle: columns[0],
-                    companyName: columns[1],
-                    location: columns[2],
-                    jobDescription: columns[3],
-                    requirements: columns[4]
-                )
-                jobs.append(job)
             }
+            
+            if jobs.isEmpty {
+                error = .invalidData
+                showError = true
+            }
+            
+            self.allJobs = jobs
+            self.listOfJobs = jobs
+            
         } catch {
-            print("Parsing CSV file failed")
+            self.error = .parsingError
+            showError = true
+        }
+    }
+    
+    private func parseJob(from row: String.SubSequence) throws -> Job {
+        var columns: [String] = []
+        var currentField = ""
+        var insideQuotes = false
+        
+        for character in row {
+            if character == "\"" {
+                insideQuotes.toggle()
+            } else if character == "," && !insideQuotes {
+                columns.append(currentField.trimmingCharacters(in: .init(charactersIn: "\"")))
+                currentField = ""
+            } else {
+                currentField.append(character)
+            }
+        }
+        columns.append(currentField.trimmingCharacters(in: .init(charactersIn: "\"")))
+        
+        guard columns.count >= 5 else {
+            throw JobError.invalidData
         }
         
-        self.allJobs = jobs
-        return jobs
+        return Job(
+            jobTitle: columns[0],
+            companyName: columns[1],
+            location: columns[2],
+            jobDescription: columns[3],
+            requirements: columns[4]
+        )
     }
     
     private func sortJobsByFavorites() {

@@ -23,3 +23,19 @@ struct Job: Identifiable, Codable {
         case requirements = "Requirements"
     }
 }
+
+enum JobError: Error {
+    case fileNotFound
+    case invalidData
+    case parsingError
+    case locationError
+    
+    var message: String {
+        switch self {
+            case .fileNotFound: return "Unable to load jobs data"
+            case .invalidData: return "Invalid job data format"
+            case .parsingError: return "Error processing jobs data"
+            case .locationError: return "Unable to load location preview"
+        }
+    }
+}
