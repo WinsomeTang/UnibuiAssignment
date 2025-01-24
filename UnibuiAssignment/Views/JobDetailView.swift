@@ -8,11 +8,38 @@
 import SwiftUI
 
 struct JobDetailView: View {
+    @StateObject var viewModel = JobListViewModel()
+    @Environment(\.dismiss) var dismiss
+    let job: Job
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        VStack(alignment: .leading, spacing: 16) {
+            Button(action: { dismiss() }) {
+                HStack {
+                    Image(systemName: "chevron.left")
+                    Text("Back")
+                }
+                .foregroundColor(.unibuiOrange)
+                .padding(.horizontal)
+            }
+            
+            Group {
+                Text("Job Description")
+                    .font(.headline)
+                Text(job.jobDescription)
+                
+                Text("Requirements")
+                    .font(.headline)
+                Text(job.requirements)
+            }
+            .padding(.horizontal)
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(job.jobTitle)
     }
 }
 
-#Preview {
-    JobDetailView()
-}
+//
+//#Preview {
+//    JobDetailView()
+//}
